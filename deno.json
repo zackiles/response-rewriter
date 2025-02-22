@@ -1,0 +1,26 @@
+{
+  "name": "@zackiles/response-rewriter",
+  "version": "0.0.1",
+  "description": "Deno library for modifying Response objects by replacing text patterns in headers, bodies, and URLs.",
+  "exports": "./mod.ts",
+  "tasks": {
+    "dev": "deno run --watch main.ts",
+    "test": "deno test --allow-net",
+    "check": "deno check **/*.ts",
+    "lint": "deno lint"
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1",
+    "clarinet": "npm:clarinet@^0.12.6"
+  },
+  "publish": {
+    "include": ["LICENSE", "README.md", "mod.ts", "main.ts"],
+    "exclude": ["**/.*", "**/tests/", "**/*_test.ts", "deno.lock"]
+  },
+  "fmt": {
+    "include": ["*.ts"],
+    "lineWidth": 80,
+    "semiColons": false,
+    "singleQuote": true
+  }
+}

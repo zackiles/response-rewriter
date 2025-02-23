@@ -1,4 +1,4 @@
-import clarinet from 'npm:clarinet'
+import clarinet from 'npm:clarinet@0.12.6'
 
 // Escape sequence state machine states
 enum EscapeState {
@@ -37,7 +37,7 @@ interface TextTransformer extends Transformer<string, string> {
 }
 
 // Export interfaces for mod.ts
-export type { JsonTransformer, TextTransformer };
+export type { JsonTransformer, TextTransformer }
 
 // UTF-8 sequence length detection and validation
 function getUtf8SequenceInfo(byte: number): {
@@ -46,10 +46,8 @@ function getUtf8SequenceInfo(byte: number): {
 } {
   if ((byte & 0x80) === 0) return { length: 1 }
   if ((byte & 0xe0) === 0xc0) return { length: 2, expectedBytes: [0x80, 0xbf] }
-  if ((byte & 0xf0) === 0xe0)
-    return { length: 3, expectedBytes: [0x80, 0xbf, 0x80, 0xbf] }
-  if ((byte & 0xf8) === 0xf0)
-    return { length: 4, expectedBytes: [0x80, 0xbf, 0x80, 0xbf, 0x80, 0xbf] }
+  if ((byte & 0xf0) === 0xe0) return { length: 3, expectedBytes: [0x80, 0xbf, 0x80, 0xbf] }
+  if ((byte & 0xf8) === 0xf0) return { length: 4, expectedBytes: [0x80, 0xbf, 0x80, 0xbf, 0x80, 0xbf] }
   return { length: 0 } // Invalid UTF-8 sequence
 }
 
@@ -106,14 +104,9 @@ function codePointFromUtf8(bytes: Uint8Array): number | null {
   } else if (bytes.length === 2) {
     codePoint = ((first & 0x1f) << 6) | (bytes[1] & 0x3f)
   } else if (bytes.length === 3) {
-    codePoint =
-      ((first & 0x0f) << 12) | ((bytes[1] & 0x3f) << 6) | (bytes[2] & 0x3f)
+    codePoint = ((first & 0x0f) << 12) | ((bytes[1] & 0x3f) << 6) | (bytes[2] & 0x3f)
   } else if (bytes.length === 4) {
-    codePoint =
-      ((first & 0x07) << 18) |
-      ((bytes[1] & 0x3f) << 12) |
-      ((bytes[2] & 0x3f) << 6) |
-      (bytes[3] & 0x3f)
+    codePoint = ((first & 0x07) << 18) | ((bytes[1] & 0x3f) << 12) | ((bytes[2] & 0x3f) << 6) | (bytes[3] & 0x3f)
   }
 
   return codePoint
@@ -135,7 +128,7 @@ function unwrapProxy(value: unknown): unknown {
       const raw = Reflect.get(value, '__raw__')
       if (raw) return raw
     }
-  // deno-lint-ignore no-empty
+    // deno-lint-ignore no-empty
   } catch {}
   return value
 }
@@ -184,7 +177,7 @@ const DEFAULT_MAX_WINDOW = 1024 // Maximum bytes to buffer before forcing a spli
 function createJsonTransformStream(
   regex: RegExp,
   replacement: string,
-  _encoding: string,  // Prefix with underscore to indicate intentionally unused parameter
+  _encoding: string, // Prefix with underscore to indicate intentionally unused parameter
 ): TransformStream<string, string> {
   return new TransformStream<string, string>({
     start(controller) {
@@ -225,10 +218,12 @@ function createJsonTransformStream(
       }
 
       transformer.parser.onvalue = (v: unknown) => {
-        if (transformer.tokens.length > 0 && 
-            transformer.tokens[transformer.tokens.length - 1] !== '[' && 
-            transformer.tokens[transformer.tokens.length - 1] !== '{' && 
-            transformer.tokens[transformer.tokens.length - 1] !== ':') {
+        if (
+          transformer.tokens.length > 0 &&
+          transformer.tokens[transformer.tokens.length - 1] !== '[' &&
+          transformer.tokens[transformer.tokens.length - 1] !== '{' &&
+          transformer.tokens[transformer.tokens.length - 1] !== ':'
+        ) {
           transformer.tokens.push(',')
         }
         if (typeof v === 'string') {
@@ -263,9 +258,7 @@ function createJsonTransformStream(
 
           case EscapeState.Escaped:
             if (char === 'u') {
-              transformer.escapeState = transformer.highSurrogate
-                ? EscapeState.LowSurrogate1
-                : EscapeState.Unicode1
+              transformer.escapeState = transformer.highSurrogate ? EscapeState.LowSurrogate1 : EscapeState.Unicode1
               transformer.unicodeChars = ''
               transformer.lowSurrogate = ''
             } else {
@@ -337,20 +330,10 @@ function createJsonTransformStream(
             if (/[0-9a-fA-F]/.test(char)) {
               transformer.lowSurrogate += char
               const lowCodePoint = Number.parseInt(transformer.lowSurrogate, 16)
-              if (
-                lowCodePoint >= 0xdc00 &&
-                lowCodePoint <= 0xdfff &&
-                transformer.highSurrogate
-              ) {
+              if (lowCodePoint >= 0xdc00 && lowCodePoint <= 0xdfff && transformer.highSurrogate) {
                 // Valid surrogate pair, combine them
-                const highCodePoint = Number.parseInt(
-                  transformer.highSurrogate,
-                  16,
-                )
-                const combinedCodePoint =
-                  ((highCodePoint - 0xd800) << 10) +
-                  (lowCodePoint - 0xdc00) +
-                  0x10000
+                const highCodePoint = Number.parseInt(transformer.highSurrogate, 16)
+                const combinedCodePoint = ((highCodePoint - 0xd800) << 10) + (lowCodePoint - 0xdc00) + 0x10000
                 transformer.unicodeChars = combinedCodePoint.toString(16)
                 transformer.escapeState = EscapeState.Normal
               }
@@ -367,10 +350,7 @@ function createJsonTransformStream(
       }
 
       // NEW: Handle incomplete escape sequence at the end of the chunk.
-      if (
-        transformer.escapeState === EscapeState.Escaped &&
-        !transformer.buffer.endsWith('\\')
-      ) {
+      if (transformer.escapeState === EscapeState.Escaped && !transformer.buffer.endsWith('\\')) {
         transformer.buffer += '\\' // Store the escape character for the next chunk
       }
       if (transformer.escapeState === EscapeState.Escaped) {
@@ -454,16 +434,9 @@ export async function replaceInResponse(
   const regex =
     typeof search === 'string'
       ? new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
-      : new RegExp(
-          search.source,
-          search.flags.includes('g') ? search.flags : `${search.flags}g`,
-        )
+      : new RegExp(search.source, search.flags.includes('g') ? search.flags : `${search.flags}g`)
 
-  function deepReplace(
-    value: unknown,
-    seen: WeakSet<object | unknown[]>,
-    path: (string | number)[] = [],
-  ): unknown {
+  function deepReplace(value: unknown, seen: WeakSet<object | unknown[]>, path: (string | number)[] = []): unknown {
     // Unwrap any Proxy objects
     value = unwrapProxy(value)
 
@@ -481,9 +454,7 @@ export async function replaceInResponse(
       if (Array.isArray(value)) {
         // Track array itself and its path
         seen.add(value)
-        return value.map((v, i) =>
-          deepReplace(unwrapProxy(v), seen, [...path, i]),
-        )
+        return value.map((v, i) => deepReplace(unwrapProxy(v), seen, [...path, i]))
       }
 
       const replacedObj: Record<string | symbol, unknown> = {}
@@ -492,11 +463,7 @@ export async function replaceInResponse(
         const desc = Object.getOwnPropertyDescriptor(value, key)
         if (!desc?.enumerable) continue
 
-        replacedObj[key] = deepReplace(
-          unwrapProxy(Reflect.get(value, key)),
-          seen,
-          [...path, String(key)],
-        )
+        replacedObj[key] = deepReplace(unwrapProxy(Reflect.get(value, key)), seen, [...path, String(key)])
       }
       return replacedObj
     }
@@ -537,10 +504,7 @@ export async function replaceInResponse(
       new TextDecoder(charsetMatch[1], { fatal: true })
       encoding = charsetMatch[1]
     } catch (e) {
-      console.warn(
-        `Unsupported charset: ${charsetMatch[1]}, falling back to UTF-8`,
-        (e as Error).message,
-      )
+      console.warn(`Unsupported charset: ${charsetMatch[1]}, falling back to UTF-8`, (e as Error).message)
     }
   }
 
@@ -576,13 +540,13 @@ export async function replaceInResponse(
     const textBuffer = await response.arrayBuffer()
     const originalText = decoder.decode(textBuffer)
     const parts = originalText.split(`--${boundary}`)
-    
-    const processedParts = parts.map(part => {
+
+    const processedParts = parts.map((part) => {
       if (!part.trim() || part.trim() === '--') return part
-      
+
       const [headers, ...bodyParts] = part.split('\r\n\r\n')
       const body = bodyParts.join('\r\n\r\n')
-      
+
       // Process the body based on its content type
       const contentTypeMatch = /content-type:\s*([^;\r\n]+)/i.exec(headers)
       if (contentTypeMatch) {
@@ -664,11 +628,7 @@ export async function replaceInResponse(
       }
     } else {
       // For chunked JSON responses, use streaming JSON parser with proper escape handling
-      const jsonTransformStream = createJsonTransformStream(
-        regex,
-        replacement,
-        encoding,
-      )
+      const jsonTransformStream = createJsonTransformStream(regex, replacement, encoding)
       const transformedStream = response.body
         .pipeThrough(new TextDecoderStream(encoding, { fatal: true }))
         .pipeThrough(jsonTransformStream)
@@ -690,9 +650,7 @@ export async function replaceInResponse(
       ;(this as TextTransformer).utf8Buffer = []
       // Get locale from Content-Language, or default to browser locale
       const contentLanguage = response.headers.get('content-language')
-      const locales = contentLanguage
-        ? contentLanguage.split(',').map((lang) => lang.trim())
-        : undefined
+      const locales = contentLanguage ? contentLanguage.split(',').map((lang) => lang.trim()) : undefined
       ;(this as TextTransformer).segmenter = new Intl.Segmenter(locales, {
         granularity: 'word',
       })
@@ -703,9 +661,7 @@ export async function replaceInResponse(
 
       // Since chunk comes from TextDecoderStream, we need to encode it to process UTF-8 sequences
       const encodedChunk = encoder.encode(chunk)
-      const allBytes = new Uint8Array(
-        transformer.utf8Buffer.length + encodedChunk.length,
-      )
+      const allBytes = new Uint8Array(transformer.utf8Buffer.length + encodedChunk.length)
       allBytes.set(transformer.utf8Buffer)
       allBytes.set(encodedChunk, transformer.utf8Buffer.length)
       transformer.utf8Buffer.length = 0 // Clear instead of reassign
@@ -781,10 +737,7 @@ export async function replaceInResponse(
         currentScript = script || currentScript
 
         // Check for exceeding maxWindowSize (using code point count)
-        if (
-          codePoints.length - lastSafeIndex > transformer.maxWindowSize &&
-          lastSafeIndex > 0
-        ) {
+        if (codePoints.length - lastSafeIndex > transformer.maxWindowSize && lastSafeIndex > 0) {
           const processCodePoints = codePoints.slice(0, lastSafeIndex)
           const processText = String.fromCodePoint(...processCodePoints)
           const replaced = processText.replace(regex, replacement)
@@ -816,9 +769,7 @@ export async function replaceInResponse(
       }
 
       // Store remaining bytes directly
-      const remainingBytes = encoder.encode(
-        String.fromCodePoint(...codePoints),
-      )
+      const remainingBytes = encoder.encode(String.fromCodePoint(...codePoints))
       transformer.utf8Buffer.length = 0
       transformer.utf8Buffer.push(...Array.from(remainingBytes))
     },
@@ -833,10 +784,7 @@ export async function replaceInResponse(
 
           while (i < remainingBytes.length) {
             const seqInfo = getUtf8SequenceInfo(remainingBytes[i])
-            if (
-              seqInfo.length === 0 ||
-              i + seqInfo.length > remainingBytes.length
-            ) {
+            if (seqInfo.length === 0 || i + seqInfo.length > remainingBytes.length) {
               break
             }
 
@@ -863,10 +811,7 @@ export async function replaceInResponse(
           }
         } catch (e: unknown) {
           console.error((e as Error).message)
-          console.warn(
-            'Failed to process final UTF-8 bytes:',
-            transformer.utf8Buffer,
-          )
+          console.warn('Failed to process final UTF-8 bytes:', transformer.utf8Buffer)
         }
       }
     },
@@ -890,9 +835,7 @@ export async function replaceInResponse(
       chunks.push(result.value)
     }
 
-    const finalBytes = new Uint8Array(
-      chunks.reduce((acc, chunk) => acc + chunk.length, 0),
-    )
+    const finalBytes = new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0))
     let offset = 0
     for (const chunk of chunks) {
       finalBytes.set(chunk, offset)

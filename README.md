@@ -4,6 +4,7 @@ Deno library for modifying Response objects by replacing text patterns in header
 
 [![JSR Score](https://jsr.io/badges/@zackiles/response-rewriter/score)](https://jsr.io/@zackiles/response-rewriter)
 [![JSR](https://jsr.io/badges/@zackiles/response-rewriter)](https://jsr.io/@zackiles/response-rewriter)
+[![JSR Scope](https://jsr.io/badges/scope/@zackiles)](https://jsr.io/@zackiles)
 
 ## Features
 

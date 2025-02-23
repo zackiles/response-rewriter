@@ -1,45 +1,93 @@
 import clarinet from 'npm:clarinet@0.12.6'
 
-// Escape sequence state machine states
+/**
+ * State machine states for handling JSON string escape sequences.
+ * Used to properly handle Unicode surrogate pairs and other escape sequences
+ * across chunk boundaries in streaming responses.
+ */
 enum EscapeState {
+  /** Normal string processing state */
   Normal = 0,
+  /** Just encountered a backslash */
   Escaped = 1,
-  Unicode1 = 2, // \u
-  Unicode2 = 3, // \u0
-  Unicode3 = 4, // \u00
-  Unicode4 = 5, // \u000
-  HighSurrogate = 6, // Completed high surrogate, waiting for low surrogate
-  LowSurrogate1 = 7, // \u after high surrogate
-  LowSurrogate2 = 8, // \uD after high surrogate
-  LowSurrogate3 = 9, // \uDC after high surrogate
-  LowSurrogate4 = 10, // \uDC0 after high surrogate
+  /** Processing \u in Unicode escape */
+  Unicode1 = 2,
+  /** Processing first hex digit after \u */
+  Unicode2 = 3,
+  /** Processing second hex digit */
+  Unicode3 = 4,
+  /** Processing third hex digit */
+  Unicode4 = 5,
+  /** Completed high surrogate, waiting for low surrogate */
+  HighSurrogate = 6,
+  /** Processing \u after high surrogate */
+  LowSurrogate1 = 7,
+  /** Processing \uD after high surrogate */
+  LowSurrogate2 = 8,
+  /** Processing \uDC after high surrogate */
+  LowSurrogate3 = 9,
+  /** Processing \uDC0 after high surrogate */
+  LowSurrogate4 = 10,
 }
 
+/**
+ * Transformer for handling JSON content streams.
+ * Implements proper escape sequence handling and surrogate pair processing
+ * while maintaining streaming capabilities.
+ */
 interface JsonTransformer extends Transformer<string, string> {
+  /** Accumulates partial chunks for processing */
   buffer: string
+  /** Stores processed JSON tokens before output */
   tokens: string[]
+  /** Clarinet streaming JSON parser instance */
   parser: ReturnType<typeof clarinet.parser>
+  /** Current nesting depth in JSON structure */
   depth: number
+  /** Whether currently processing a string value */
   inString: boolean
+  /** Current state in escape sequence processing */
   escapeState: EscapeState
+  /** Buffer for Unicode escape sequence characters */
   unicodeChars: string
-  highSurrogate: string | null // Store high surrogate until we get low surrogate
-  lowSurrogate: string // Store low surrogate as it's being built
+  /** Stores high surrogate until matching low surrogate is found */
+  highSurrogate: string | null
+  /** Accumulates low surrogate characters during processing */
+  lowSurrogate: string
 }
 
+/**
+ * Transformer for handling text content streams.
+ * Provides UTF-8 aware chunking and proper word boundary detection
+ * for various scripts including CJK.
+ */
 interface TextTransformer extends Transformer<string, string> {
+  /** Accumulates partial chunks for processing */
   buffer: string
+  /** Set of characters that mark safe break points for chunking */
   safeBreakPoints: Set<string>
+  /** Maximum chunk size before forcing a break */
   maxWindowSize: number
-  utf8Buffer: number[] // Buffer for incomplete UTF-8 sequences
-  segmenter: Intl.Segmenter // For CJK word segmentation
-  lastScript: string | null // Track the script of the last character for mixed-script handling
+  /** Buffer for incomplete UTF-8 sequences */
+  utf8Buffer: number[]
+  /** Word segmenter for CJK text */
+  segmenter: Intl.Segmenter
+  /** Tracks script changes for mixed-script content */
+  lastScript: string | null
 }
 
 // Export interfaces for mod.ts
 export type { JsonTransformer, TextTransformer }
 
+// Export the enum for mod.ts
+export { EscapeState }
+
 // UTF-8 sequence length detection and validation
+/**
+ * Determines the length and validation rules for a UTF-8 sequence.
+ * @param byte - The first byte of a potential UTF-8 sequence
+ * @returns Object containing sequence length and expected continuation bytes
+ */
 function getUtf8SequenceInfo(byte: number): {
   length: number
   expectedBytes?: number[]
@@ -51,6 +99,11 @@ function getUtf8SequenceInfo(byte: number): {
   return { length: 0 } // Invalid UTF-8 sequence
 }
 
+/**
+ * Validates a UTF-8 byte sequence.
+ * @param bytes - Array of bytes representing a potential UTF-8 sequence
+ * @returns Whether the sequence is valid UTF-8
+ */
 function isValidUtf8Sequence(bytes: Uint8Array): boolean {
   const first = bytes[0]
   switch (bytes.length) {
@@ -90,7 +143,11 @@ function isValidUtf8Sequence(bytes: Uint8Array): boolean {
   return true
 }
 
-// Add this function to get the code point:
+/**
+ * Converts a valid UTF-8 byte sequence to its Unicode code point.
+ * @param bytes - Valid UTF-8 byte sequence
+ * @returns Unicode code point or null if invalid
+ */
 function codePointFromUtf8(bytes: Uint8Array): number | null {
   if (!isValidUtf8Sequence(bytes)) {
     return null // Invalid sequence
@@ -112,13 +169,20 @@ function codePointFromUtf8(bytes: Uint8Array): number | null {
   return codePoint
 }
 
+/**
+ * Type guard for objects.
+ * @param value - Value to check
+ * @returns Whether the value is a non-null object
+ * @internal
+ */
 function isObject(value: unknown): value is object {
   return typeof value === 'object' && value !== null
 }
 
 /**
  * Unwraps a potentially proxied object to get its target.
- * Uses a more reliable method with Reflect.get.
+ * @param value - Value that might be a proxy
+ * @returns Unwrapped value
  */
 function unwrapProxy(value: unknown): unknown {
   if (!isObject(value)) return value
@@ -133,7 +197,10 @@ function unwrapProxy(value: unknown): unknown {
   return value
 }
 
-// Safe break points for text streaming (common sentence/phrase endings)
+/**
+ * Default set of characters that indicate safe points to split text chunks.
+ * Includes common sentence endings, punctuation, and CJK text boundaries.
+ */
 const DEFAULT_SAFE_BREAK_POINTS = new Set([
   ' ',
   '\n',
@@ -162,22 +229,26 @@ const DEFAULT_SAFE_BREAK_POINTS = new Set([
   '》',
 ])
 
-const DEFAULT_MAX_WINDOW = 1024 // Maximum bytes to buffer before forcing a split
+/**
+ * Maximum number of bytes to buffer before forcing a chunk split.
+ * Used to prevent excessive memory usage during streaming.
+ */
+const DEFAULT_MAX_WINDOW = 1024
 
 /**
- * Transforms a JSON text stream by performing regex-based replacements on all string values.
- * Utilizes a streaming parser (Clarinet) with a TransformStream to avoid accumulating the entire response.
- * This implementation uses a state machine to properly handle escape sequences across chunks.
+ * Creates a transform stream for JSON content that replaces text in string values.
+ * Handles escape sequences and surrogate pairs across chunk boundaries.
  *
- * @param {RegExp} regex - Global regular expression used for matching.
- * @param {string} replacement - Replacement string.
- * @param {string} encoding - Character encoding of the stream.
- * @returns {TransformStream<string, string>} - A transform stream that outputs modified JSON text.
+ * @internal
+ * @param regex - Global regular expression for matching
+ * @param replacement - Replacement string
+ * @param _encoding - Character encoding (currently unused)
+ * @returns Transform stream for JSON content
  */
 function createJsonTransformStream(
   regex: RegExp,
   replacement: string,
-  _encoding: string, // Prefix with underscore to indicate intentionally unused parameter
+  _encoding: string,
 ): TransformStream<string, string> {
   return new TransformStream<string, string>({
     start(controller) {
@@ -406,21 +477,34 @@ function createJsonTransformStream(
 }
 
 /**
- * Replaces occurrences of search with replacement in both the headers and body of an HTTP response.
- * This function is intentionally designed to modify ALL headers (including sensitive headers like "Set-Cookie" or "Content-Disposition").
+ * Replaces text patterns in an HTTP response's headers and body while preserving the streaming nature
+ * and handling complex Unicode scenarios correctly.
  *
- * Critical Fixes Implemented:
- *  - Uses state machine for proper escape sequence handling
- *  - Ensures circular reference detection at all recursion levels
- *  - Prevents UTF-8 character corruption in text chunking
- *  - Guarantees content-length consistency with transfer-encoding
- *  - Implements word-preserving fallback for text chunks
- *  - Handles multipart responses with content-type specific processing
+ * Features:
+ * - Streaming support with proper backpressure
+ * - UTF-8 aware text chunking
+ * - Proper JSON string handling including escape sequences
+ * + - Multipart response handling with content-type specific processing
+ * - Content-type specific processing
+ * - Header modification
  *
- * @param {string|RegExp} search - The text or regex pattern to search for.
- * @param {string} replacement - The replacement text.
- * @param {Response} response - The original HTTP response to modify.
- * @returns {Promise<Response>} - The new, modified HTTP response.
+ * @param search - String or RegExp pattern to search for
+ * @param replacement - Replacement string (can include regex capture groups)
+ * @param response - Original HTTP Response object
+ * @returns A new Response with replacements applied
+ *
+ * @example
+ * ```ts
+ * // Replace all occurrences of "original" with "new" in a response
+ * const newResponse = await replaceInResponse("original", "new", response);
+ *
+ * // Use regex with capture groups
+ * const newResponse = await replaceInResponse(
+ *   /user_(\d+)/g,
+ *   "member_$1",
+ *   response
+ * );
+ * ```
  */
 export async function replaceInResponse(
   search: string | RegExp,

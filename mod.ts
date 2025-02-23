@@ -1,11 +1,11 @@
 /**
- * A powerful Deno library for modifying Response objects by replacing text patterns in headers, bodies, and URLs.
- * Supports streaming responses, multiple encodings, and complex Unicode scenarios.
- * 
+ * Strip or replace any and all instances of a string in a Response object (Fetch-based).
+ * Rewrite URLs, headers, bodies, with streaming responses, multiple encodings, and complex Unicode scenarios and transport support.
+ *
+ *
  * @module
  */
 
-export { replaceInResponse } from "./main.ts";
-
-// Re-export types that might be useful for consumers
-export type { JsonTransformer, TextTransformer } from "./main.ts"; 
+// Export the main function and types
+export { replaceInResponse } from './main.ts'
+export type { JsonTransformer, TextTransformer } from './main.ts'

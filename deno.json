@@ -1,7 +1,7 @@
 {
   "name": "@zackiles/response-rewriter",
-  "version": "0.0.1",
-  "description": "Deno library for modifying Response objects by replacing text patterns in headers, bodies, and URLs.",
+  "version": "0.0.2",
+  "description": "Strip or replace any and all instances of a string in a Response object (Fetch-based): URLs, headers, bodies, with multiple encoding and transport support.",
   "exports": "./mod.ts",
   "tasks": {
     "dev": "deno run --watch main.ts",
@@ -22,5 +22,11 @@
     "lineWidth": 80,
     "semiColons": false,
     "singleQuote": true
+  },
+  "runtimes": {
+    "deno": ">=1.37",
+    "node": ">=18.0",
+    "bun": ">=1.0",
+    "workerd": ">=1.20231030.0"
   }
 }

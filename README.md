@@ -3,8 +3,7 @@
 Deno library for modifying Response objects by replacing text patterns in headers, bodies, and URLs. Supports streaming responses, multiple encodings, and complex Unicode scenarios. Handles even the most nightmarish of edge-cases. Perfect for rewriting Responses in proxies.
 
 [![JSR Score](https://jsr.io/badges/@zackiles/response-rewriter/score)](https://jsr.io/@zackiles/response-rewriter)
-[![JSR Version](https://jsr.io/badges/@zackiles/response-rewriter/version)](https://jsr.io/@zackiles/response-rewriter)
-[![JSR Downloads](https://jsr.io/badges/@zackiles/response-rewriter/downloads)](https://jsr.io/@zackiles/response-rewriter)
+[![JSR](https://jsr.io/badges/@zackiles/response-rewriter)](https://jsr.io/@zackiles/response-rewriter)
 
 ## Features
 

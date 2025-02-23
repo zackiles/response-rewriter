@@ -1,6 +1,6 @@
 {
   "name": "@zackiles/response-rewriter",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Strip or replace any and all instances of a string in a Response object (Fetch-based): URLs, headers, bodies, with multiple encoding and transport support.",
   "exports": "./mod.ts",
   "tasks": {

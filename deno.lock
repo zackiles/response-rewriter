@@ -3,8 +3,7 @@
   "specifiers": {
     "jsr:@std/assert@1": "1.0.11",
     "jsr:@std/internal@^1.0.5": "1.0.5",
-    "npm:clarinet@*": "0.12.6",
-    "npm:clarinet@~0.12.6": "0.12.6"
+    "npm:clarinet@0.12.6": "0.12.6"
   },
   "jsr": {
     "@std/assert@1.0.11": {
@@ -59,7 +58,7 @@
   "workspace": {
     "dependencies": [
       "jsr:@std/assert@1",
-      "npm:clarinet@~0.12.6"
+      "npm:clarinet@0.12.6"
     ]
   }
 }
